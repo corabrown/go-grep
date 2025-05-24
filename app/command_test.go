@@ -199,7 +199,70 @@ func TestDoubleBackreference(t *testing.T) {
 	}
 }
 
+func TestSimpleNestedBackreference(t *testing.T) {
+	str := []byte("'cat and cat' is")
+	pattern := "('(cat) and \\2') is"
+	result, err, _ := matchLine(str, pattern)
+	if err != nil {
+		panic("error")
+	}
 
+	if !result {
+		t.Fatalf("incorrect result for %v, %v", str, pattern)
+	}
+}
+
+func TestNestedBackreference(t *testing.T) {
+	str := []byte("'cat and cat' is the same as 'cat and cat'")
+	pattern := "('(cat) and \\2') is the same as \\1"
+	result, err, _ := matchLine(str, pattern)
+	if err != nil {
+		panic("error")
+	}
+
+	if !result {
+		t.Fatalf("incorrect result for %v, %v", str, pattern)
+	}
+}
+
+func TestMultipleAlternatingGroups(t *testing.T) {
+	str := []byte("a dog and cats")
+	pattern := "a (cat|dog) and (cat|dog)s"
+	result, err, _ := matchLine(str, pattern)
+	if err != nil {
+		panic("error")
+	}
+
+	if !result {
+		t.Fatalf("incorrect result for %v, %v", str, pattern)
+	}
+}
+
+func TestNonMatchingBackreference(t *testing.T) {
+	str := []byte("cat and dog")
+	pattern := "(cat) and \\1"
+	result, err, _ := matchLine(str, pattern)
+	if err != nil {
+		panic("error")
+	}
+
+	if result {
+		t.Fatalf("incorrect result for %v, %v", str, pattern)
+	}
+}
+
+func TestBigNestedBackreference(t *testing.T) {
+	str := []byte("grep 101 is doing grep 101")
+	pattern := "((\\w\\w\\w\\w) (\\d\\d\\d)) is doing \\2 \\3"
+	result, err, _ := matchLine(str, pattern)
+	if err != nil {
+		panic("error")
+	}
+
+	if !result {
+		t.Fatalf("incorrect result for %v, %v", str, pattern)
+	}
+}
 
 func TestAllMatches(t *testing.T) {
 	tests := []struct {

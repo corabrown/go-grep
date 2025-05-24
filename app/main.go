@@ -37,9 +37,9 @@ func main() {
 
 func matchLine(line []byte, pattern string) (matchFound bool, err error, matchLength int) {
 
-	// defer func() {
-	// 	fmt.Println(string(line), pattern, matchFound)
-	// }()
+	defer func() {
+		fmt.Println(string(line), "##", pattern, "##", matchFound, "##", matchLength)
+	}()
 
 	p := parsePattern(pattern)
 
@@ -73,15 +73,18 @@ func matchLine(line []byte, pattern string) (matchFound bool, err error, matchLe
 		if !matchFound {
 			if ok, patternLength = p.previousRepeatedComponent().isMatch(line[i:]); ok {
 				matchFound = true
+				matchLength += patternLength
 			} else {
 				if p.matchBeginning {
 					return false, nil, 0
 				}
 				if p.matchFoundForEverySegment && matchFound && ((!matchEnd) || i == len(line)-1) {
-					return true, nil, i
+					return true, nil, i + 1
 				}
 				p.currentIndex = 0
 			}
+		} else {
+			matchLength += patternLength
 		}
 
 		if p.currentComponent().hasEnoughMatches() {
@@ -109,7 +112,7 @@ type fullPattern struct {
 	patternComponents         []patternSegment
 	currentIndex              int
 	matchFoundForEverySegment bool
-	matchBeginning bool 
+	matchBeginning            bool
 }
 
 func (v fullPattern) currentComponent() *patternSegment {
@@ -120,12 +123,11 @@ func (v fullPattern) currentComponent() *patternSegment {
 		return &patternSegment{empty: true}
 	}
 
-	
 	if v.patternComponents[v.currentIndex].backReference {
 		v.patternComponents[v.currentIndex].subPatterns = map[string]bool{v.patternComponents[v.patternComponents[v.currentIndex].previousGroupIndex].m: false}
 	}
 
-	return &v.patternComponents[v.currentIndex] 
+	return &v.patternComponents[v.currentIndex]
 }
 
 func (v fullPattern) previousRepeatedComponent() *patternSegment {
@@ -150,11 +152,17 @@ func parsePattern(pattern string) fullPattern {
 	currentCharacter := patternSegment{}
 	inside := false
 	var fp fullPattern
+
+	var nextCharacterIndex int
+
 mainPatternLoop:
 	for i := range pattern {
-		if (i == 0) && (pattern[i] == '^') {
-			fp.matchBeginning = true 
-			continue 
+
+		if (nextCharacterIndex != 0) && (i < nextCharacterIndex) {
+			continue
+		}
+		if i == nextCharacterIndex {
+			nextCharacterIndex = 0
 		}
 
 		if pattern[i] == ')' || pattern[i] == ']' {
@@ -164,6 +172,12 @@ mainPatternLoop:
 		if inside {
 			continue
 		}
+
+		if (i == 0) && (pattern[i] == '^') {
+			fp.matchBeginning = true
+			continue
+		}
+
 		if len(output) > 0 && output[len(output)-1].isRepeated() && (output[len(output)-1].b == pattern[i]) {
 			if output[len(output)-1].qualifier == repeated {
 				output[len(output)-1].matchesRequired += 1
@@ -193,10 +207,10 @@ mainPatternLoop:
 			output = append(output, currentCharacter)
 			currentCharacter = patternSegment{}
 		case '(':
-			idx := strings.IndexByte(pattern[i:], ')')
+			idx := parseParenthases(pattern[i+1:]) + i
 			currentCharacter.subPatterns = make(map[string]bool)
 			if idx != -1 {
-				for _, subPat := range strings.Split(pattern[i+1:i+idx], "|") {
+				for _, subPat := range strings.Split(pattern[i+1:1+idx], "|") {
 					p := parsePattern(subPat)
 					currentCharacter.subPatterns[subPat] = p.lastComponent().isRepeated()
 				}
@@ -205,37 +219,54 @@ mainPatternLoop:
 			inside = true
 			output = append(output, currentCharacter)
 			currentCharacter = patternSegment{}
+			nextCharacterIndex = idx + 1
 		default:
-			if currentCharacter.escaped {
+			if currentCharacter.escaped && !inside {
 				if pattern[i] == '1' {
 					for j, pat := range output {
 						if pat.subPatterns != nil {
 							output = append(output, patternSegment{
 								previousGroupIndex: j,
-								backReference: true,
-								matchesRequired: 1,
+								backReference:      true,
+								matchesRequired:    1,
 							})
+							pat.referenced = true
+							output[j] = pat
 							currentCharacter = patternSegment{}
 							continue mainPatternLoop
 						}
 					}
 				}
 				if pattern[i] == '2' {
-					var oneFound bool
 					for j, pat := range output {
-						if pat.subPatterns != nil {
-							if oneFound {
-								output = append(output, patternSegment{
-									previousGroupIndex: j,
-									backReference: true,
-									matchesRequired: 1,
-								})
-								currentCharacter = patternSegment{}
-								continue mainPatternLoop
-							}
-							oneFound = true
+						if (pat.subPatterns != nil) && (!pat.referenced) {
+							output = append(output, patternSegment{
+								previousGroupIndex: j,
+								backReference:      true,
+								matchesRequired:    1,
+							})
+							currentCharacter = patternSegment{}
+							pat.referenced = true
+							output[j] = pat
+							continue mainPatternLoop
 						}
 					}
+				}
+				if pattern[i] == '3' {
+					for j, pat := range output {
+						if (pat.subPatterns != nil) && (!pat.referenced) {
+							output = append(output, patternSegment{
+								previousGroupIndex: j,
+								backReference:      true,
+								matchesRequired:    1,
+							})
+							pat.referenced = true
+							output[j] = pat
+							currentCharacter = patternSegment{}
+							continue mainPatternLoop
+						}
+					}
+					continue mainPatternLoop
 				}
 				if pattern[i] != 'd' && pattern[i] != 'w' {
 					output = append(output, patternSegment{b: '\\'})
@@ -276,6 +307,7 @@ type patternSegment struct {
 	m                  string
 	previousGroupIndex int
 	backReference      bool
+	referenced         bool
 }
 
 func isInt(b byte) bool {
@@ -386,4 +418,20 @@ func (v *patternSegment) isRepeated() bool {
 	}
 
 	return v.qualifier == zeroOrOne || v.qualifier == repeated
+}
+
+func parseParenthases(line string) (endIndex int) {
+	nOpenParenthases := 1
+	for i := range line {
+		if line[i] == '(' {
+			nOpenParenthases += 1
+		}
+		if line[i] == ')' {
+			nOpenParenthases -= 1
+		}
+		if nOpenParenthases == 0 {
+			return i
+		}
+	}
+	return -1
 }
