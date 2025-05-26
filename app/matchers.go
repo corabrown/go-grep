@@ -1,0 +1,181 @@
+package main
+
+import (
+	"strings"
+)
+
+type matcher interface {
+	match(lines []byte) (bool, string)
+	isRepeated() bool
+	isMatched() bool
+	setMatched(bool)
+}
+
+type exactMatch struct {
+	b       byte
+	matched bool
+}
+
+func (v *exactMatch) match(line []byte) (matchFound bool, matchedString string) {
+	if len(line) == 0 {
+		return
+	}
+	if v.b == line[0] {
+		return true, string(v.b)
+	}
+	return
+}
+
+func (v *exactMatch) isRepeated() bool  { return false }
+func (v *exactMatch) isMatched() bool   { return v.matched }
+func (v *exactMatch) setMatched(m bool) { v.matched = m }
+
+type matchDigits struct{ matched bool }
+
+func (v matchDigits) match(line []byte) (bool, string) {
+	if len(line) == 0 {
+		return false, ""
+	}
+	return (line[0] >= '0') && (line[0] <= '9'), string(line[0])
+}
+func (v *matchDigits) isRepeated() bool  { return false }
+func (v *matchDigits) isMatched() bool   { return v.matched }
+func (v *matchDigits) setMatched(m bool) { v.matched = m }
+
+type matchAlphanumeric struct{ matched bool }
+
+func (v matchAlphanumeric) match(line []byte) (bool, string) {
+	if len(line) == 0 {
+		return false, ""
+	}
+	b := line[0]
+	return (b >= '0' && b <= '9') || (b >= 'A' && b <= 'Z') || (b >= 'a' && b <= 'z'), string(b)
+}
+func (v *matchAlphanumeric) isRepeated() bool  { return false }
+func (v *matchAlphanumeric) isMatched() bool   { return v.matched }
+func (v *matchAlphanumeric) setMatched(m bool) { v.matched = m }
+
+type matchCharacterGroup struct {
+	s        string
+	negative bool
+	matched  bool
+}
+
+func (v matchCharacterGroup) match(line []byte) (bool, string) {
+	if len(line) == 0 {
+		return false, ""
+	}
+
+	return strings.Contains(v.s, string(line[0])) == !v.negative, string(line[0])
+}
+func (v *matchCharacterGroup) isRepeated() bool  { return false }
+func (v *matchCharacterGroup) isMatched() bool   { return v.matched }
+func (v *matchCharacterGroup) setMatched(m bool) { v.matched = m }
+
+type matchOneOrMore struct {
+	matcher        matcher
+	nMatches       int
+	matchedPattern string
+}
+
+func (v *matchOneOrMore) match(line []byte) (bool, string) {
+	if len(line) == 0 {
+		return false, ""
+	}
+	if ok, res := v.matcher.match(line); ok {
+		v.nMatches += 1
+		v.matchedPattern = v.matchedPattern + res
+		return true, res
+	}
+	return false, ""
+}
+func (v *matchOneOrMore) isRepeated() bool { return true }
+func (v *matchOneOrMore) isMatched() bool  { return v.nMatches > 0 }
+func (v *matchOneOrMore) setMatched(m bool) {
+	if !m {
+		v.nMatches = 0
+	}
+
+}
+
+type matchZeroOrOne struct {
+	matcher        matcher
+	nMatches       int
+	matchedPattern string
+}
+
+func (v *matchZeroOrOne) match(line []byte) (bool, string) {
+	if (len(line) == 0) || (v.nMatches > 1) {
+		return false, ""
+	}
+	if ok, res := v.matcher.match(line); ok {
+		v.nMatches += 1
+		v.matchedPattern = v.matchedPattern + res
+		return true, v.matchedPattern
+	} else if v.nMatches == 0 {
+		return true, ""
+	}
+	return false, ""
+}
+func (v *matchZeroOrOne) isRepeated() bool  { return true }
+func (v *matchZeroOrOne) isMatched() bool   { return true }
+func (v *matchZeroOrOne) setMatched(m bool) {}
+
+type wildcard struct{}
+
+func (v *wildcard) match(line []byte) (bool, string) {
+	if len(line) == 0 {
+		return false, ""
+	}
+	return true, string(line[0])
+}
+
+func (v *wildcard) isRepeated() bool  { return false }
+func (v *wildcard) isMatched() bool   { return true }
+func (v *wildcard) setMatched(m bool) {}
+
+type matchAlternatingGroup struct {
+	groupNumber        int
+	matched            bool
+	subPatterns        []string
+	matchedString      string
+	currentStringStack string
+}
+
+func (v *matchAlternatingGroup) match(line []byte) (bool, string) {
+	for _, subPat := range v.subPatterns {
+		if ok, m := match(line, "^"+subPat); ok {
+			v.matched = true
+			v.matchedString = m
+			capturedGroupMatches[v.groupNumber] = m
+			return true, m
+		}
+	}
+	return false, ""
+}
+
+func (v *matchAlternatingGroup) isRepeated() bool { return false }
+func (v *matchAlternatingGroup) isMatched() bool  { return v.matched }
+func (v *matchAlternatingGroup) setMatched(m bool) {
+	v.matched = m
+	if !m {
+		v.matchedString = ""
+	}
+}
+
+type backreferencce struct {
+	groupNumber int
+	matched bool 
+}
+
+func (v *backreferencce) match(line []byte) (bool, string) {
+	if ok, m := match(line, "^"+capturedGroupMatches[v.groupNumber]); ok {
+		v.matched = true 
+		return true, m
+	}
+	return false, ""
+}
+
+func (v *backreferencce) isRepeated() bool { return false }
+func (v *backreferencce) isMatched() bool  { return v.matched }
+func (v *backreferencce) setMatched(m bool) {v.matched = m}

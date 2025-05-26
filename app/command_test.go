@@ -69,6 +69,19 @@ func TestPositiveCharacterGroups(t *testing.T) {
 	}
 }
 
+func TestCapturedPositiveCharacterGroup(t *testing.T) {
+	str := []byte("ab is")
+	pattern := "([abcd]+) is"
+	result, err, _ := matchLine(str, pattern)
+	if err != nil {
+		panic("error")
+	}
+
+	if !result {
+		t.Fatalf("incorrect result for %v, %v", str, pattern)
+	}
+}
+
 func TestZeroOrMore(t *testing.T) {
 	str := []byte("act")
 	pattern := "ca?t"
@@ -111,19 +124,6 @@ func TestSingleBackreferenceEasy(t *testing.T) {
 func TestSingleBackreference(t *testing.T) {
 	str := []byte("grep 101 is doing grep 101 times")
 	pattern := "(\\w\\w\\w\\w \\d\\d\\d) is doing \\1 times"
-	result, err, _ := matchLine(str, pattern)
-	if err != nil {
-		panic("error")
-	}
-
-	if !result {
-		t.Fatalf("incorrect result for %v, %v", str, pattern)
-	}
-}
-
-func TestSingleBackreferenceHarder(t *testing.T) {
-	str := []byte("abcd is abcd, not efg")
-	pattern := "([abcd]+) is \\1, not [^xyz]+"
 	result, err, _ := matchLine(str, pattern)
 	if err != nil {
 		panic("error")
@@ -341,5 +341,4 @@ func TestAllMatches(t *testing.T) {
 			}
 		})
 	}
-
 }

@@ -1,0 +1,116 @@
+package main
+
+var capturedGroupMatches []string
+
+func parse(pattern string) []matcher {
+	matchers := make([]matcher, 0, len(pattern))
+
+	var escaped bool
+	var characterGroupMatcher *matchCharacterGroup
+	var alternatingGroupMatcher *matchAlternatingGroup
+	var skipNext bool
+	alternatingGroupCount := 0
+
+	for i := range pattern {
+
+		if skipNext {
+			skipNext = false
+			continue
+		}
+
+		if pattern[i] == '[' {
+			characterGroupMatcher = &matchCharacterGroup{}
+			continue
+		}
+		if pattern[i] == ']' {
+			matchers = append(matchers, characterGroupMatcher)
+			characterGroupMatcher = nil
+			continue
+		}
+
+		if pattern[i] == '(' {
+			alternatingGroupCount += 1
+			if alternatingGroupMatcher == nil {
+				alternatingGroupMatcher = &matchAlternatingGroup{groupNumber: len(capturedGroupMatches), subPatterns: make([]string, 0)}
+				capturedGroupMatches = append(capturedGroupMatches, "")
+			}
+			continue
+		}
+		if pattern[i] == ')' {
+			alternatingGroupCount -= 1
+			if alternatingGroupCount == 0 {
+				alternatingGroupMatcher.subPatterns = append(alternatingGroupMatcher.subPatterns, alternatingGroupMatcher.currentStringStack)
+				matchers = append(matchers, alternatingGroupMatcher)
+				alternatingGroupMatcher = nil
+				continue
+			}
+		}
+
+		if alternatingGroupMatcher != nil {
+			if pattern[i] == '|' {
+				alternatingGroupMatcher.subPatterns = append(alternatingGroupMatcher.subPatterns, alternatingGroupMatcher.currentStringStack)
+				alternatingGroupMatcher.currentStringStack = ""
+				continue
+			}
+			alternatingGroupMatcher.currentStringStack = alternatingGroupMatcher.currentStringStack + string(pattern[i])
+			continue
+		}
+
+		if characterGroupMatcher != nil {
+			if (len(characterGroupMatcher.s) == 0) && (pattern[i] == '^') {
+				characterGroupMatcher.negative = true
+			}
+
+			characterGroupMatcher.s = characterGroupMatcher.s + string(pattern[i])
+			continue
+		}
+
+		if pattern[i] == '\\' {
+			escaped = true
+			continue
+		}
+
+		if escaped {
+			if pattern[i] == 'd' {
+				matchers = append(matchers, &matchDigits{})
+				escaped = false
+				continue
+			}
+			if pattern[i] == 'w' {
+				matchers = append(matchers, &matchAlphanumeric{})
+				escaped = false
+				continue
+			}
+			if pattern[i] == '1' {
+				matchers = append(matchers, &backreferencce{groupNumber: 0})
+				continue
+			}
+		}
+
+		if (pattern[i] == '+') && (len(matchers) > 0) {
+			prevMatcher := matchers[len(matchers)-1]
+			matchers[len(matchers)-1] = &matchOneOrMore{matcher: prevMatcher}
+			if (len(pattern) > i+1) && (i > 1) {
+				if pattern[i+1] == pattern[i-1] {
+					skipNext = true
+				}
+			}
+			continue
+		}
+
+		if (pattern[i] == '?') && (len(matchers) > 0) {
+			prevMatcher := matchers[len(matchers)-1]
+			matchers[len(matchers)-1] = &matchZeroOrOne{matcher: prevMatcher}
+			continue
+		}
+
+		if pattern[i] == '.' {
+			matchers = append(matchers, &wildcard{})
+			continue
+		}
+
+		matchers = append(matchers, &exactMatch{b: pattern[i]})
+	}
+
+	return matchers
+}
