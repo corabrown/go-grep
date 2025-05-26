@@ -18,24 +18,10 @@ func parse(pattern string) []matcher {
 			continue
 		}
 
-		if pattern[i] == '[' {
-			characterGroupMatcher = &matchCharacterGroup{}
-			continue
-		}
-		if pattern[i] == ']' {
-			matchers = append(matchers, characterGroupMatcher)
-			characterGroupMatcher = nil
-			continue
-		}
-
 		if pattern[i] == '(' {
 			alternatingGroupCount += 1
-			if alternatingGroupMatcher == nil {
-				alternatingGroupMatcher = &matchAlternatingGroup{groupNumber: len(capturedGroupMatches), subPatterns: make([]string, 0)}
-				capturedGroupMatches = append(capturedGroupMatches, "")
-			}
-			continue
 		}
+
 		if pattern[i] == ')' {
 			alternatingGroupCount -= 1
 			if alternatingGroupCount == 0 {
@@ -53,6 +39,24 @@ func parse(pattern string) []matcher {
 				continue
 			}
 			alternatingGroupMatcher.currentStringStack = alternatingGroupMatcher.currentStringStack + string(pattern[i])
+			continue
+		}
+
+		if pattern[i] == '[' {
+			characterGroupMatcher = &matchCharacterGroup{}
+			continue
+		}
+		if pattern[i] == ']' {
+			matchers = append(matchers, characterGroupMatcher)
+			characterGroupMatcher = nil
+			continue
+		}
+
+		if pattern[i] == '(' {
+			if alternatingGroupMatcher == nil {
+				alternatingGroupMatcher = &matchAlternatingGroup{groupNumber: len(capturedGroupMatches), subPatterns: make([]string, 0)}
+				capturedGroupMatches = append(capturedGroupMatches, "")
+			}
 			continue
 		}
 
@@ -82,7 +86,18 @@ func parse(pattern string) []matcher {
 				continue
 			}
 			if pattern[i] == '1' {
-				matchers = append(matchers, &backreferencce{groupNumber: 0})
+				matchers = append(matchers, &backreference{groupNumber: 0})
+				escaped = false
+				continue
+			}
+			if pattern[i] == '2' {
+				matchers = append(matchers, &backreference{groupNumber: 1})
+				escaped = false
+				continue
+			}
+			if pattern[i] == '3' {
+				matchers = append(matchers, &backreference{groupNumber: 2})
+				escaped = false
 				continue
 			}
 		}

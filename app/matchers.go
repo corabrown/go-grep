@@ -105,7 +105,7 @@ type matchZeroOrOne struct {
 }
 
 func (v *matchZeroOrOne) match(line []byte) (bool, string) {
-	if (len(line) == 0) || (v.nMatches > 1) {
+	if (len(line) == 0) || (v.nMatches > 0) {
 		return false, ""
 	}
 	if ok, res := v.matcher.match(line); ok {
@@ -146,16 +146,27 @@ func (v *matchAlternatingGroup) match(line []byte) (bool, string) {
 	for _, subPat := range v.subPatterns {
 		if ok, m := match(line, "^"+subPat); ok {
 			v.matched = true
-			v.matchedString = m
-			capturedGroupMatches[v.groupNumber] = m
+			v.matchedString = v.matchedString + m
+			capturedGroupMatches[v.groupNumber] = capturedGroupMatches[v.groupNumber] + m
 			return true, m
 		}
 	}
 	return false, ""
 }
 
-func (v *matchAlternatingGroup) isRepeated() bool { return false }
-func (v *matchAlternatingGroup) isMatched() bool  { return v.matched }
+func (v *matchAlternatingGroup) isRepeated() bool {
+	for _, subPat := range v.subPatterns {
+		p := parse(subPat)
+		if len(p) > 0 {
+			if p[len(p)-1].isRepeated() {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func (v *matchAlternatingGroup) isMatched() bool { return v.matched }
 func (v *matchAlternatingGroup) setMatched(m bool) {
 	v.matched = m
 	if !m {
@@ -163,19 +174,19 @@ func (v *matchAlternatingGroup) setMatched(m bool) {
 	}
 }
 
-type backreferencce struct {
+type backreference struct {
 	groupNumber int
-	matched bool 
+	matched     bool
 }
 
-func (v *backreferencce) match(line []byte) (bool, string) {
+func (v *backreference) match(line []byte) (bool, string) {
 	if ok, m := match(line, "^"+capturedGroupMatches[v.groupNumber]); ok {
-		v.matched = true 
+		v.matched = true
 		return true, m
 	}
 	return false, ""
 }
 
-func (v *backreferencce) isRepeated() bool { return false }
-func (v *backreferencce) isMatched() bool  { return v.matched }
-func (v *backreferencce) setMatched(m bool) {v.matched = m}
+func (v *backreference) isRepeated() bool  { return false }
+func (v *backreference) isMatched() bool   { return v.matched }
+func (v *backreference) setMatched(m bool) { v.matched = m }

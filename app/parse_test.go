@@ -73,7 +73,7 @@ func TestMatching(t *testing.T) {
 		},
 		{
 			"combining-character-classes2",
-			"(bac is)",
+			"bac is",
 			"([abcd]+) is",
 			true,
 		},
@@ -171,6 +171,36 @@ func TestMatching(t *testing.T) {
 			"single-backreference2",
 			"abcd is abcd, not efg",
 			"([abcd]+) is \\1, not [^xyz]+",
+			true,
+		},
+		{
+			"single-backreference3",
+			"once a dreaaamer, alwayszzz a dreaaamer",
+			"once a (drea+mer), alwaysz? a \\1",
+			false,
+		},
+		{
+			"multiple-backreferences",
+			"3 red squares and 3 red circles",
+			"(\\d+) (\\w+) squares and \\1 \\2 circles",
+			true,
+		},
+		{
+			"multiple-backreferences1",
+			"apple pie, apple and pie",
+			"^(\\w+) (\\w+), \\1 and \\2$",
+			true,
+		},
+		{
+			"nested-backreferences",
+			"'cat and cat' is the same as 'cat and cat'",
+			"('(cat) and \\2') is the same as \\1",
+			true,
+		},
+		{
+			"nested-backreferences1",
+			"abc-def is abc-def, not efg, abc, or def",
+			"(([abc]+)-([def]+)) is \\1, not ([^xyz]+), \\2, or \\3",
 			true,
 		},
 	}

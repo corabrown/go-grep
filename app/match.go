@@ -1,6 +1,15 @@
 package main
 
-func match(line []byte, pattern string) (bool, string) {
+import "fmt"
+
+func match(line []byte, pattern string) (found bool, matchedString string) {
+
+	defer func() {
+		capturedGroups := capturedGroupMatches
+		_ = capturedGroups
+
+		fmt.Println(matchedString)
+	}()
 
 	var beginningAnchor bool
 	if pattern[0] == '^' {
@@ -18,7 +27,9 @@ func match(line []byte, pattern string) (bool, string) {
 	pix := 0
 	lix := 0
 	lastMatchedCharacterIndex := 0
-	var matchedString string
+
+	capturedGroups := capturedGroupMatches
+	_ = capturedGroups
 
 	for (lix < len(line)) && (pix < len(pat)) {
 		l := string(line[lix])
@@ -50,7 +61,7 @@ func match(line []byte, pattern string) (bool, string) {
 			resetPattern(pat)
 			pix = 0
 			lix += 1
-			matchedLine = ""
+			matchedString = ""
 		}
 		if pix == len(pat) && (!endAnchor || lix == len(line)) {
 			return true, matchedString
