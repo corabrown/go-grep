@@ -1,35 +1,21 @@
 package main
 
-import "fmt"
-
 func match(line []byte, pattern string) (found bool, matchedString string) {
-
-	defer func() {
-		capturedGroups := capturedGroupMatches
-		_ = capturedGroups
-
-		fmt.Println(matchedString)
-	}()
-
-	var beginningAnchor bool
-	if pattern[0] == '^' {
-		beginningAnchor = true
-		pattern = pattern[1:]
-	}
-
-	var endAnchor bool
-	if pattern[len(pattern)-1] == '$' {
-		endAnchor = true
-		pattern = pattern[:len(pattern)-1]
-	}
-
 	pat := parse(pattern)
+	return patternMatch(line, pat)
+
+}
+
+func patternMatch(line []byte, p Pattern) (found bool, matchedString string) {
+
+	capturedGroups := capturedGroupMatches
+	_ = capturedGroups
+
 	pix := 0
 	lix := 0
 	lastMatchedCharacterIndex := 0
 
-	capturedGroups := capturedGroupMatches
-	_ = capturedGroups
+	pat := p.matchers
 
 	for (lix < len(line)) && (pix < len(pat)) {
 		l := string(line[lix])
@@ -55,16 +41,13 @@ func match(line []byte, pattern string) (found bool, matchedString string) {
 					continue
 				}
 			}
-			if beginningAnchor {
+			if p.beginningAnchor {
 				return false, ""
 			}
 			resetPattern(pat)
 			pix = 0
 			lix += 1
 			matchedString = ""
-		}
-		if pix == len(pat) && (!endAnchor || lix == len(line)) {
-			return true, matchedString
 		}
 	}
 
@@ -75,7 +58,7 @@ func match(line []byte, pattern string) (found bool, matchedString string) {
 		}
 	}
 
-	if endAnchor && lastMatchedCharacterIndex != len(line)-1 {
+	if p.endAnchor && lastMatchedCharacterIndex != len(line)-1 {
 		return false, ""
 	}
 

@@ -180,6 +180,18 @@ func TestMatching(t *testing.T) {
 			false,
 		},
 		{
+			"single-backreference4",
+			"that starts and ends with this",
+			"^(this) starts and ends with \\1$",
+			false,
+		},
+		{
+			"single-backreference5",
+			"bugz here and bugs there",
+			"(b..s|c..e) here and \\1 there",
+			false,
+		},
+		{
 			"multiple-backreferences",
 			"3 red squares and 3 red circles",
 			"(\\d+) (\\w+) squares and \\1 \\2 circles",
@@ -201,6 +213,18 @@ func TestMatching(t *testing.T) {
 			"nested-backreferences1",
 			"abc-def is abc-def, not efg, abc, or def",
 			"(([abc]+)-([def]+)) is \\1, not ([^xyz]+), \\2, or \\3",
+			true,
+		},
+		{
+			"nested-backreferences2",
+			"cat and fish, cat with fish, cat and fish",
+			"((c.t|d.g) and (f..h|b..d)), \\2 with \\3, \\1",
+			true,
+		},
+		{
+			"simplify-failing-nested-backreference-test",
+			"abc-def is",
+			"(([abc]+)-([def]+)) is",
 			true,
 		},
 	}

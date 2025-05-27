@@ -2,7 +2,26 @@ package main
 
 var capturedGroupMatches []string
 
-func parse(pattern string) []matcher {
+type Pattern struct {
+	matchers        []matcher
+	beginningAnchor bool
+	endAnchor       bool
+}
+
+func parse(pattern string) Pattern {
+
+	var beginningAnchor bool
+	if pattern[0] == '^' {
+		beginningAnchor = true
+		pattern = pattern[1:]
+	}
+
+	var endAnchor bool
+	if pattern[len(pattern)-1] == '$' {
+		endAnchor = true
+		pattern = pattern[:len(pattern)-1]
+	}
+
 	matchers := make([]matcher, 0, len(pattern))
 
 	var escaped bool
@@ -25,7 +44,7 @@ func parse(pattern string) []matcher {
 		if pattern[i] == ')' {
 			alternatingGroupCount -= 1
 			if alternatingGroupCount == 0 {
-				alternatingGroupMatcher.subPatterns = append(alternatingGroupMatcher.subPatterns, alternatingGroupMatcher.currentStringStack)
+				alternatingGroupMatcher.subPatterns = append(alternatingGroupMatcher.subPatterns, parse(alternatingGroupMatcher.currentStringStack))
 				matchers = append(matchers, alternatingGroupMatcher)
 				alternatingGroupMatcher = nil
 				continue
@@ -33,8 +52,8 @@ func parse(pattern string) []matcher {
 		}
 
 		if alternatingGroupMatcher != nil {
-			if pattern[i] == '|' {
-				alternatingGroupMatcher.subPatterns = append(alternatingGroupMatcher.subPatterns, alternatingGroupMatcher.currentStringStack)
+			if (pattern[i] == '|') && (alternatingGroupCount == 1) {
+				alternatingGroupMatcher.subPatterns = append(alternatingGroupMatcher.subPatterns, parse(alternatingGroupMatcher.currentStringStack))
 				alternatingGroupMatcher.currentStringStack = ""
 				continue
 			}
@@ -54,7 +73,7 @@ func parse(pattern string) []matcher {
 
 		if pattern[i] == '(' {
 			if alternatingGroupMatcher == nil {
-				alternatingGroupMatcher = &matchAlternatingGroup{groupNumber: len(capturedGroupMatches), subPatterns: make([]string, 0)}
+				alternatingGroupMatcher = &matchAlternatingGroup{groupNumber: len(capturedGroupMatches), subPatterns: make([]Pattern, 0)}
 				capturedGroupMatches = append(capturedGroupMatches, "")
 			}
 			continue
@@ -127,5 +146,5 @@ func parse(pattern string) []matcher {
 		matchers = append(matchers, &exactMatch{b: pattern[i]})
 	}
 
-	return matchers
+	return Pattern{matchers, beginningAnchor, endAnchor}
 }

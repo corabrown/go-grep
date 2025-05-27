@@ -137,14 +137,23 @@ func (v *wildcard) setMatched(m bool) {}
 type matchAlternatingGroup struct {
 	groupNumber        int
 	matched            bool
-	subPatterns        []string
+	subPatterns        []Pattern
 	matchedString      string
 	currentStringStack string
+	repeatingCheck     bool
 }
 
 func (v *matchAlternatingGroup) match(line []byte) (bool, string) {
+	defer func() {
+		v.repeatingCheck = false
+	}()
+
 	for _, subPat := range v.subPatterns {
-		if ok, m := match(line, "^"+subPat); ok {
+		subPat.beginningAnchor = true
+		if v.repeatingCheck {
+			subPat.matchers = subPat.matchers[len(subPat.matchers)-1:]
+		}
+		if ok, m := patternMatch(line, subPat); ok {
 			v.matched = true
 			v.matchedString = v.matchedString + m
 			capturedGroupMatches[v.groupNumber] = capturedGroupMatches[v.groupNumber] + m
@@ -155,10 +164,10 @@ func (v *matchAlternatingGroup) match(line []byte) (bool, string) {
 }
 
 func (v *matchAlternatingGroup) isRepeated() bool {
-	for _, subPat := range v.subPatterns {
-		p := parse(subPat)
-		if len(p) > 0 {
-			if p[len(p)-1].isRepeated() {
+	for _, p := range v.subPatterns {
+		if len(p.matchers) > 0 {
+			if p.matchers[len(p.matchers)-1].isRepeated() {
+				v.repeatingCheck = true
 				return true
 			}
 		}
