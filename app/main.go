@@ -4,24 +4,25 @@ import (
 	"fmt"
 	"io"
 	"os"
+
+	"github.com/codecrafters-io/grep-starter-go/pattern"
 )
 
-// Usage: echo <input_text> | your_program.sh -E <pattern>
 func main() {
 	if len(os.Args) < 3 || os.Args[1] != "-E" {
 		fmt.Fprintf(os.Stderr, "usage: mygrep -E <pattern>\n")
-		os.Exit(2) // 1 means no lines were selected, >1 means error
+		os.Exit(2)
 	}
 
-	pattern := os.Args[2]
+	p := os.Args[2]
 
-	line, err := io.ReadAll(os.Stdin) // assume we're only dealing with a single line
+	line, err := io.ReadAll(os.Stdin)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: read input text: %v\n", err)
 		os.Exit(2)
 	}
 
-	ok, err, _ := matchLine(line, pattern)
+	ok, _, err := matchLine(line, p)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(2)
@@ -34,8 +35,8 @@ func main() {
 	fmt.Println("found")
 }
 
-func matchLine(line []byte, pattern string) (matchFound bool, err error, matchLength int) {
-	capturedGroupMatches = make([]string, 0)
-	isMatch, _ := match(line, pattern)
-	return isMatch, nil, 0
+func matchLine(line []byte, p string) (matchFound bool, matchLength int, err error) {
+	grep := pattern.NewGrep(p)
+	isMatch, _ := grep.Match(line)
+	return isMatch, 0, nil
 }

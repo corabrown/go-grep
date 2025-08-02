@@ -1,4 +1,4 @@
-package main
+package pattern
 
 import (
 	"testing"
@@ -231,8 +231,8 @@ func TestMatching(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			capturedGroupMatches = make([]string, 0)
-			result, _ := match([]byte(tt.input), tt.pattern)
+			grep := NewGrep(tt.pattern)
+			result, _ := grep.Match([]byte(tt.input))
 			if result != tt.expected {
 				t.Errorf("incorrect result for %v, %v", string(tt.input), tt.pattern)
 			}

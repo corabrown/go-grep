@@ -1,11 +1,11 @@
-package main
+package pattern
 
 import (
 	"strings"
 )
 
 type matcher interface {
-	match(lines []byte) (bool, string)
+	match(lines []byte, grep *Grep) (bool, string)
 	isRepeated() bool
 	isMatched() bool
 	setMatched(bool)
@@ -16,7 +16,7 @@ type exactMatch struct {
 	matched bool
 }
 
-func (v *exactMatch) match(line []byte) (matchFound bool, matchedString string) {
+func (v *exactMatch) match(line []byte, grep *Grep) (matchFound bool, matchedString string) {
 	if len(line) == 0 {
 		return
 	}
@@ -32,7 +32,7 @@ func (v *exactMatch) setMatched(m bool) { v.matched = m }
 
 type matchDigits struct{ matched bool }
 
-func (v matchDigits) match(line []byte) (bool, string) {
+func (v matchDigits) match(line []byte, grep *Grep) (bool, string) {
 	if len(line) == 0 {
 		return false, ""
 	}
@@ -44,12 +44,12 @@ func (v *matchDigits) setMatched(m bool) { v.matched = m }
 
 type matchAlphanumeric struct{ matched bool }
 
-func (v matchAlphanumeric) match(line []byte) (bool, string) {
+func (v matchAlphanumeric) match(line []byte, grep *Grep) (bool, string) {
 	if len(line) == 0 {
 		return false, ""
 	}
 	b := line[0]
-	return (b >= '0' && b <= '9') || (b >= 'A' && b <= 'Z') || (b >= 'a' && b <= 'z'), string(b)
+	return (b >= '0' && b <= '9') || (b >= 'A' && b <= 'Z') || (b >= 'a' && b <= 'z') || (b == '_'), string(b)
 }
 func (v *matchAlphanumeric) isRepeated() bool  { return false }
 func (v *matchAlphanumeric) isMatched() bool   { return v.matched }
@@ -61,7 +61,7 @@ type matchCharacterGroup struct {
 	matched  bool
 }
 
-func (v matchCharacterGroup) match(line []byte) (bool, string) {
+func (v matchCharacterGroup) match(line []byte, grep *Grep) (bool, string) {
 	if len(line) == 0 {
 		return false, ""
 	}
@@ -78,11 +78,11 @@ type matchOneOrMore struct {
 	matchedPattern string
 }
 
-func (v *matchOneOrMore) match(line []byte) (bool, string) {
+func (v *matchOneOrMore) match(line []byte, grep *Grep) (bool, string) {
 	if len(line) == 0 {
 		return false, ""
 	}
-	if ok, res := v.matcher.match(line); ok {
+	if ok, res := v.matcher.match(line, grep); ok {
 		v.nMatches += 1
 		v.matchedPattern = v.matchedPattern + res
 		return true, res
@@ -104,11 +104,11 @@ type matchZeroOrOne struct {
 	matchedPattern string
 }
 
-func (v *matchZeroOrOne) match(line []byte) (bool, string) {
+func (v *matchZeroOrOne) match(line []byte, grep *Grep) (bool, string) {
 	if (len(line) == 0) || (v.nMatches > 0) {
 		return false, ""
 	}
-	if ok, res := v.matcher.match(line); ok {
+	if ok, res := v.matcher.match(line, grep); ok {
 		v.nMatches += 1
 		v.matchedPattern = v.matchedPattern + res
 		return true, v.matchedPattern
@@ -123,7 +123,7 @@ func (v *matchZeroOrOne) setMatched(m bool) {}
 
 type wildcard struct{}
 
-func (v *wildcard) match(line []byte) (bool, string) {
+func (v *wildcard) match(line []byte, grep *Grep) (bool, string) {
 	if len(line) == 0 {
 		return false, ""
 	}
@@ -143,7 +143,7 @@ type matchAlternatingGroup struct {
 	repeatingCheck     bool
 }
 
-func (v *matchAlternatingGroup) match(line []byte) (bool, string) {
+func (v *matchAlternatingGroup) match(line []byte, grep *Grep) (bool, string) {
 	defer func() {
 		v.repeatingCheck = false
 	}()
@@ -153,10 +153,10 @@ func (v *matchAlternatingGroup) match(line []byte) (bool, string) {
 		if v.repeatingCheck {
 			subPat.matchers = subPat.matchers[len(subPat.matchers)-1:]
 		}
-		if ok, m := patternMatch(line, subPat); ok {
+		if ok, m := grep.patternMatch(line, subPat); ok {
 			v.matched = true
 			v.matchedString = v.matchedString + m
-			capturedGroupMatches[v.groupNumber] = capturedGroupMatches[v.groupNumber] + m
+			grep.capturedGroupMatches[v.groupNumber] = grep.capturedGroupMatches[v.groupNumber] + m
 			return true, m
 		}
 	}
@@ -188,8 +188,9 @@ type backreference struct {
 	matched     bool
 }
 
-func (v *backreference) match(line []byte) (bool, string) {
-	if ok, m := match(line, "^"+capturedGroupMatches[v.groupNumber]); ok {
+func (v *backreference) match(line []byte, grep *Grep) (bool, string) {
+	g := NewGrep("^" + grep.capturedGroupMatches[v.groupNumber])
+	if ok, m := g.Match(line); ok {
 		v.matched = true
 		return true, m
 	}

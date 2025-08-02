@@ -1,14 +1,12 @@
-package main
+package pattern
 
-func match(line []byte, pattern string) (found bool, matchedString string) {
-	pat := parse(pattern)
-	return patternMatch(line, pat)
-
+func (v *Grep) Match(line []byte) (found bool, matchedString string) {
+	return v.patternMatch(line, v.pat)
 }
 
-func patternMatch(line []byte, p Pattern) (found bool, matchedString string) {
+func (v *Grep) patternMatch(line []byte, p Pattern) (found bool, matchedString string) {
 
-	capturedGroups := capturedGroupMatches
+	capturedGroups := v.capturedGroupMatches
 	_ = capturedGroups
 
 	pix := 0
@@ -25,7 +23,7 @@ func patternMatch(line []byte, p Pattern) (found bool, matchedString string) {
 			return false, ""
 		}
 
-		if ok, matchedLine := pat[pix].match(line[lix:]); ok {
+		if ok, matchedLine := pat[pix].match(line[lix:], v); ok {
 			pat[pix].setMatched(true)
 			lix += len(matchedLine)
 			lastMatchedCharacterIndex = lix - 1
@@ -33,7 +31,7 @@ func patternMatch(line []byte, p Pattern) (found bool, matchedString string) {
 			pix += 1
 		} else {
 			if (pix != 0) && pat[pix-1].isRepeated() {
-				if ok, matchedLine := pat[pix-1].match(line[lix:]); ok {
+				if ok, matchedLine := pat[pix-1].match(line[lix:], v); ok {
 					pat[pix-1].setMatched(true)
 					lix += len(matchedLine)
 					lastMatchedCharacterIndex = lix - 1
