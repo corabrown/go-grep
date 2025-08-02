@@ -49,7 +49,7 @@ func (v matchAlphanumeric) match(line []byte, pattern *Pattern) (bool, string) {
 		return false, ""
 	}
 	b := line[0]
-	return (b >= '0' && b <= '9') || (b >= 'A' && b <= 'Z') || (b >= 'a' && b <= 'z') || (b == '_'), string(b)
+	return (b >= '0' && b <= '9') || (b >= 'A' && b <= 'Z') || (b >= 'a' && b <= 'z'), string(b)
 }
 func (v *matchAlphanumeric) isRepeated() bool  { return false }
 func (v *matchAlphanumeric) isMatched() bool   { return v.matched }
@@ -123,7 +123,7 @@ func (v *matchZeroOrOne) setMatched(m bool) {}
 
 type wildcard struct{}
 
-func (v *wildcard) match(line []byte, grep *Pattern) (bool, string) {
+func (v *wildcard) match(line []byte, pattern *Pattern) (bool, string) {
 	if len(line) == 0 {
 		return false, ""
 	}
@@ -153,10 +153,10 @@ func (v *matchAlternatingGroup) match(line []byte, pattern *Pattern) (bool, stri
 		if v.repeatingCheck {
 			subPat.matchers = subPat.matchers[len(subPat.matchers)-1:]
 		}
-		if ok, m := subPat.Match(line); ok {
+		if ok, m := PatternMatch(line, subPat); ok {
 			v.matched = true
 			v.matchedString = v.matchedString + m
-			pattern.capturedGroupMatches[v.groupNumber] = pattern.capturedGroupMatches[v.groupNumber] + m
+			pattern.capturedGroupMatches.modifyVal(v.groupNumber, pattern.capturedGroupMatches.getVal(v.groupNumber)+m)
 			return true, m
 		}
 	}
@@ -189,8 +189,7 @@ type backreference struct {
 }
 
 func (v *backreference) match(line []byte, pattern *Pattern) (bool, string) {
-	p := Parse("^" + pattern.capturedGroupMatches[v.groupNumber])
-	if ok, m := p.Match(line); ok {
+	if ok, m := Match(line, "^"+pattern.capturedGroupMatches.getVal(v.groupNumber)); ok {
 		v.matched = true
 		return true, m
 	}

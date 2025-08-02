@@ -1,16 +1,19 @@
 package grep
 
+// var CapturedGroupMatches []string
+
 type Pattern struct {
 	matchers             []matcher
 	beginningAnchor      bool
 	endAnchor            bool
-	capturedGroupMatches []string
+	capturedGroupMatches *capturedGroup
 }
 
-// Parse takes in the pattern string and constructs a pattern struct which contains an array of matchers
-func Parse(pattern string) Pattern {
-
-	capturedGroupMatches := make([]string, 0)
+func Parse(pattern string, capturedGroupMatches *capturedGroup) Pattern {
+	if capturedGroupMatches == nil {
+		v := newCapturedGroup()
+		capturedGroupMatches = v
+	}
 
 	var beginningAnchor bool
 	if pattern[0] == '^' {
@@ -46,7 +49,7 @@ func Parse(pattern string) Pattern {
 		if pattern[i] == ')' {
 			alternatingGroupCount -= 1
 			if alternatingGroupCount == 0 {
-				alternatingGroupMatcher.subPatterns = append(alternatingGroupMatcher.subPatterns, Parse(alternatingGroupMatcher.currentStringStack))
+				alternatingGroupMatcher.subPatterns = append(alternatingGroupMatcher.subPatterns, Parse(alternatingGroupMatcher.currentStringStack, capturedGroupMatches))
 				matchers = append(matchers, alternatingGroupMatcher)
 				alternatingGroupMatcher = nil
 				continue
@@ -55,7 +58,7 @@ func Parse(pattern string) Pattern {
 
 		if alternatingGroupMatcher != nil {
 			if (pattern[i] == '|') && (alternatingGroupCount == 1) {
-				alternatingGroupMatcher.subPatterns = append(alternatingGroupMatcher.subPatterns, Parse(alternatingGroupMatcher.currentStringStack))
+				alternatingGroupMatcher.subPatterns = append(alternatingGroupMatcher.subPatterns, Parse(alternatingGroupMatcher.currentStringStack, capturedGroupMatches))
 				alternatingGroupMatcher.currentStringStack = ""
 				continue
 			}
@@ -75,8 +78,8 @@ func Parse(pattern string) Pattern {
 
 		if pattern[i] == '(' {
 			if alternatingGroupMatcher == nil {
-				alternatingGroupMatcher = &matchAlternatingGroup{groupNumber: len(capturedGroupMatches), subPatterns: make([]Pattern, 0)}
-				capturedGroupMatches = append(capturedGroupMatches, "")
+				alternatingGroupMatcher = &matchAlternatingGroup{groupNumber: capturedGroupMatches.len(), subPatterns: make([]Pattern, 0)}
+				capturedGroupMatches.add("")
 			}
 			continue
 		}
@@ -149,4 +152,31 @@ func Parse(pattern string) Pattern {
 	}
 
 	return Pattern{matchers, beginningAnchor, endAnchor, capturedGroupMatches}
+}
+
+type capturedGroup struct {
+	c []string
+}
+
+func newCapturedGroup() *capturedGroup {
+	return &capturedGroup{c: make([]string, 0)}
+}
+
+func (v *capturedGroup) add(s string) {
+	if v.c == nil {
+		return
+	}
+	v.c = append(v.c, s)
+}
+
+func (v *capturedGroup) len() int {
+	return len(v.c)
+}
+
+func (v *capturedGroup) modifyVal(i int, s string) {
+	v.c[i] = s
+}
+
+func (v *capturedGroup) getVal(i int) string {
+	return v.c[i]
 }

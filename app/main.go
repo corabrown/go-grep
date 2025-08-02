@@ -1,28 +1,29 @@
-package main
+package pattern
 
 import (
 	"fmt"
 	"io"
 	"os"
 
-	"github.com/codecrafters-io/grep-starter-go/pattern"
+	"github.com/codecrafters-io/grep-starter-go/grep"
 )
 
+// Usage: echo <input_text> | your_program.sh -E <pattern>
 func main() {
 	if len(os.Args) < 3 || os.Args[1] != "-E" {
 		fmt.Fprintf(os.Stderr, "usage: mygrep -E <pattern>\n")
-		os.Exit(2)
+		os.Exit(2) // 1 means no lines were selected, >1 means error
 	}
 
-	p := os.Args[2]
+	pattern := os.Args[2]
 
-	line, err := io.ReadAll(os.Stdin)
+	line, err := io.ReadAll(os.Stdin) // assume we're only dealing with a single line
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: read input text: %v\n", err)
 		os.Exit(2)
 	}
 
-	ok, _, err := matchLine(line, p)
+	ok, err, _ := matchLine(line, pattern)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(2)
@@ -35,8 +36,7 @@ func main() {
 	fmt.Println("found")
 }
 
-func matchLine(line []byte, p string) (matchFound bool, matchLength int, err error) {
-	grep := pattern.NewGrep(p)
-	isMatch, _ := grep.Match(line)
-	return isMatch, 0, nil
+func matchLine(line []byte, pattern string) (matchFound bool, err error, matchLength int) {
+	isMatch, _ := grep.Match(line, pattern)
+	return isMatch, nil, 0
 }

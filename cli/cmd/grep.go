@@ -38,12 +38,12 @@ var goGrep = &cobra.Command{
 		}
 		filenameOrPath := args[1]
 
-		pattern := grep.Parse(pat)
-
 		info, err := os.Stat(filenameOrPath)
 		if err != nil {
 			return err
 		}
+
+		pattern := grep.Parse(pat, nil)
 
 		// if file is not a directory, we search for the pattern in the file
 		if !info.IsDir() {
@@ -87,7 +87,8 @@ var goGrep = &cobra.Command{
 					wg.Done()
 					sem.Release(1)
 				}()
-				MatchFile(file, grep)
+				p := pattern
+				grep.MatchFile(file, p)
 			}()
 		}
 

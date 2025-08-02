@@ -1,15 +1,18 @@
 package grep
 
-func (v *Pattern) Match(line []byte) (found bool, matchedString string) {
+func Match(line []byte, pattern string) (found bool, matchedString string) {
+	pat := Parse(pattern, nil)
+	return PatternMatch(line, pat)
 
-	capturedGroups := v.capturedGroupMatches
-	_ = capturedGroups
+}
+
+func PatternMatch(line []byte, p Pattern) (found bool, matchedString string) {
 
 	pix := 0
 	lix := 0
 	lastMatchedCharacterIndex := 0
 
-	pat := v.matchers
+	pat := p.matchers
 
 	for (lix < len(line)) && (pix < len(pat)) {
 		l := string(line[lix])
@@ -19,7 +22,7 @@ func (v *Pattern) Match(line []byte) (found bool, matchedString string) {
 			return false, ""
 		}
 
-		if ok, matchedLine := pat[pix].match(line[lix:], v); ok {
+		if ok, matchedLine := pat[pix].match(line[lix:], &p); ok {
 			pat[pix].setMatched(true)
 			lix += len(matchedLine)
 			lastMatchedCharacterIndex = lix - 1
@@ -27,7 +30,7 @@ func (v *Pattern) Match(line []byte) (found bool, matchedString string) {
 			pix += 1
 		} else {
 			if (pix != 0) && pat[pix-1].isRepeated() {
-				if ok, matchedLine := pat[pix-1].match(line[lix:], v); ok {
+				if ok, matchedLine := pat[pix-1].match(line[lix:], &p); ok {
 					pat[pix-1].setMatched(true)
 					lix += len(matchedLine)
 					lastMatchedCharacterIndex = lix - 1
@@ -35,7 +38,7 @@ func (v *Pattern) Match(line []byte) (found bool, matchedString string) {
 					continue
 				}
 			}
-			if v.beginningAnchor {
+			if p.beginningAnchor {
 				return false, ""
 			}
 			resetPattern(pat)
@@ -52,7 +55,7 @@ func (v *Pattern) Match(line []byte) (found bool, matchedString string) {
 		}
 	}
 
-	if v.endAnchor && lastMatchedCharacterIndex != len(line)-1 {
+	if p.endAnchor && lastMatchedCharacterIndex != len(line)-1 {
 		return false, ""
 	}
 

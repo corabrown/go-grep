@@ -19,7 +19,7 @@ func MatchFile(filename string, pattern Pattern) {
 	for scanner.Scan() {
 		line := scanner.Bytes()
 
-		if match, _ := pattern.Match(line); match {
+		if match, _ := PatternMatch(line, pattern); match {
 			fmt.Fprint(os.Stdout, string(line), "\n")
 		}
 	}
