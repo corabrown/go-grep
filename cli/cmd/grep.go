@@ -9,7 +9,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/codecrafters-io/grep-starter-go/pattern"
+	"github.com/codecrafters-io/grep-starter-go/grep"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/semaphore"
 )
@@ -38,7 +38,7 @@ var goGrep = &cobra.Command{
 		}
 		filenameOrPath := args[1]
 
-		grep := pattern.NewGrep(pat)
+		pattern := grep.Parse(pat)
 
 		info, err := os.Stat(filenameOrPath)
 		if err != nil {
@@ -47,7 +47,7 @@ var goGrep = &cobra.Command{
 
 		// if file is not a directory, we search for the pattern in the file
 		if !info.IsDir() {
-			MatchFile(filenameOrPath, grep)
+			grep.MatchFile(filenameOrPath, pattern)
 			return nil
 		}
 

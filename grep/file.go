@@ -1,14 +1,12 @@
-package cmd
+package grep
 
 import (
 	"bufio"
 	"fmt"
 	"os"
-
-	"github.com/codecrafters-io/grep-starter-go/pattern"
 )
 
-func MatchFile(filename string, grep pattern.Grep) {
+func MatchFile(filename string, pattern Pattern) {
 	file, err := os.Open(filename)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error opening file: %v", err)
@@ -21,7 +19,7 @@ func MatchFile(filename string, grep pattern.Grep) {
 	for scanner.Scan() {
 		line := scanner.Bytes()
 
-		if match, _ := grep.Match(line); match {
+		if match, _ := pattern.Match(line); match {
 			fmt.Fprint(os.Stdout, string(line), "\n")
 		}
 	}

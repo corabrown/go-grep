@@ -1,10 +1,6 @@
-package pattern
+package grep
 
-func (v *Grep) Match(line []byte) (found bool, matchedString string) {
-	return v.patternMatch(line, v.pat)
-}
-
-func (v *Grep) patternMatch(line []byte, p Pattern) (found bool, matchedString string) {
+func (v *Pattern) Match(line []byte) (found bool, matchedString string) {
 
 	capturedGroups := v.capturedGroupMatches
 	_ = capturedGroups
@@ -13,7 +9,7 @@ func (v *Grep) patternMatch(line []byte, p Pattern) (found bool, matchedString s
 	lix := 0
 	lastMatchedCharacterIndex := 0
 
-	pat := p.matchers
+	pat := v.matchers
 
 	for (lix < len(line)) && (pix < len(pat)) {
 		l := string(line[lix])
@@ -39,7 +35,7 @@ func (v *Grep) patternMatch(line []byte, p Pattern) (found bool, matchedString s
 					continue
 				}
 			}
-			if p.beginningAnchor {
+			if v.beginningAnchor {
 				return false, ""
 			}
 			resetPattern(pat)
@@ -56,7 +52,7 @@ func (v *Grep) patternMatch(line []byte, p Pattern) (found bool, matchedString s
 		}
 	}
 
-	if p.endAnchor && lastMatchedCharacterIndex != len(line)-1 {
+	if v.endAnchor && lastMatchedCharacterIndex != len(line)-1 {
 		return false, ""
 	}
 
