@@ -1,7 +1,9 @@
 # Go-grep 
 
 This repo implements grep-like behaviour using Golang. To install, make sure `task` is installed and then run 
-```task build-cli```
+```
+task build-cli
+```
 
 Usage is 
 ```
