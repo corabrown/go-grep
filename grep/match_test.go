@@ -231,7 +231,7 @@ func TestMatching(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, _ := Match([]byte(tt.input), tt.pattern)
+			result, _ := MatchStringPattern([]byte(tt.input), tt.pattern)
 			if result != tt.expected {
 				t.Errorf("incorrect result for %v, %v", string(tt.input), tt.pattern)
 			}

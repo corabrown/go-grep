@@ -4,6 +4,8 @@ import (
 	"strings"
 )
 
+// matcher interface determines whether the current line matches the pattern.
+// It also keeps track of whether or not it was matched and whether or not its a repeatable pattern
 type matcher interface {
 	match(lines []byte, pattern *Pattern) (bool, string)
 	isRepeated() bool
@@ -11,6 +13,7 @@ type matcher interface {
 	setMatched(bool)
 }
 
+// exactMatch checks for an exact match string against string 
 type exactMatch struct {
 	b       byte
 	matched bool
@@ -30,6 +33,8 @@ func (v *exactMatch) isRepeated() bool  { return false }
 func (v *exactMatch) isMatched() bool   { return v.matched }
 func (v *exactMatch) setMatched(m bool) { v.matched = m }
 
+
+// matchDigits will match if the byte is a digit 0-9
 type matchDigits struct{ matched bool }
 
 func (v matchDigits) match(line []byte, pattern *Pattern) (bool, string) {
@@ -42,6 +47,7 @@ func (v *matchDigits) isRepeated() bool  { return false }
 func (v *matchDigits) isMatched() bool   { return v.matched }
 func (v *matchDigits) setMatched(m bool) { v.matched = m }
 
+// matchAlphanumeric will match if the byte is an alphanumeric character 
 type matchAlphanumeric struct{ matched bool }
 
 func (v matchAlphanumeric) match(line []byte, pattern *Pattern) (bool, string) {
@@ -55,6 +61,8 @@ func (v *matchAlphanumeric) isRepeated() bool  { return false }
 func (v *matchAlphanumeric) isMatched() bool   { return v.matched }
 func (v *matchAlphanumeric) setMatched(m bool) { v.matched = m }
 
+// matchCharacterGroup will match if the byte is equal to any of the bytes in the string s
+// the negative flag indicates that a byte will match only if it is not in the group 
 type matchCharacterGroup struct {
 	s        string
 	negative bool
@@ -72,6 +80,7 @@ func (v *matchCharacterGroup) isRepeated() bool  { return false }
 func (v *matchCharacterGroup) isMatched() bool   { return v.matched }
 func (v *matchCharacterGroup) setMatched(m bool) { v.matched = m }
 
+// matchOneOrMore allows for a match to be repeated one or more times 
 type matchOneOrMore struct {
 	matcher        matcher
 	nMatches       int
@@ -98,6 +107,7 @@ func (v *matchOneOrMore) setMatched(m bool) {
 
 }
 
+// matchZeroOrOne allows for a match to be present zero or one time 
 type matchZeroOrOne struct {
 	matcher        matcher
 	nMatches       int
@@ -121,6 +131,7 @@ func (v *matchZeroOrOne) isRepeated() bool  { return true }
 func (v *matchZeroOrOne) isMatched() bool   { return true }
 func (v *matchZeroOrOne) setMatched(m bool) {}
 
+// wildcard matches any character 
 type wildcard struct{}
 
 func (v *wildcard) match(line []byte, pattern *Pattern) (bool, string) {
@@ -134,6 +145,8 @@ func (v *wildcard) isRepeated() bool  { return false }
 func (v *wildcard) isMatched() bool   { return true }
 func (v *wildcard) setMatched(m bool) {}
 
+// matchAlternatingGroup will match against one of the options provided by the pattern. 
+// e.g. if the pattern contains (cat|dog), this matcher will match to cat or dog
 type matchAlternatingGroup struct {
 	groupNumber        int
 	matched            bool
@@ -153,7 +166,7 @@ func (v *matchAlternatingGroup) match(line []byte, pattern *Pattern) (bool, stri
 		if v.repeatingCheck {
 			subPat.matchers = subPat.matchers[len(subPat.matchers)-1:]
 		}
-		if ok, m := PatternMatch(line, subPat); ok {
+		if ok, m := MatchParsedPattern(line, subPat); ok {
 			v.matched = true
 			v.matchedString = v.matchedString + m
 			pattern.capturedGroupMatches.modifyVal(v.groupNumber, pattern.capturedGroupMatches.getVal(v.groupNumber)+m)
@@ -183,13 +196,16 @@ func (v *matchAlternatingGroup) setMatched(m bool) {
 	}
 }
 
+// backreference matches against a previously matched alternating character group
+// e.g. if the pattern is (cat|dog) and /1, then the pattern will match the first alternating group, record the match
+// and then match that exact pattern when it gets to /1 
 type backreference struct {
 	groupNumber int
 	matched     bool
 }
 
 func (v *backreference) match(line []byte, pattern *Pattern) (bool, string) {
-	if ok, m := Match(line, "^"+pattern.capturedGroupMatches.getVal(v.groupNumber)); ok {
+	if ok, m := MatchStringPattern(line, "^"+pattern.capturedGroupMatches.getVal(v.groupNumber)); ok {
 		v.matched = true
 		return true, m
 	}

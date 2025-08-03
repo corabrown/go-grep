@@ -1,0 +1,8 @@
+version: '3'
+
+tasks:
+  build-cli:
+    dir: cmd/cli
+    cmds:
+      - go build -o ~/go/bin/go-grep
+

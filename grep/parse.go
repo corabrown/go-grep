@@ -1,7 +1,8 @@
 package grep
 
-// var CapturedGroupMatches []string
-
+// Pattern is the struct that contains all of the information from the pattern, including all of the matchers,
+// whether or not the pattern is anchored at the beginning or end, and any captured group matches that have already
+// occured.
 type Pattern struct {
 	matchers             []matcher
 	beginningAnchor      bool
@@ -9,6 +10,10 @@ type Pattern struct {
 	capturedGroupMatches *capturedGroup
 }
 
+// Parse is the function which translates a pattern string into a Pattern object with all of the matchers
+// created. It takes in the argument for capturedGroupMatches because this function is called recursively
+// on alternating groups and we want to log the capturedGroupMatches at the top level pattern for backreference
+// purposes.
 func Parse(pattern string, capturedGroupMatches *capturedGroup) Pattern {
 	if capturedGroupMatches == nil {
 		v := newCapturedGroup()
@@ -154,6 +159,8 @@ func Parse(pattern string, capturedGroupMatches *capturedGroup) Pattern {
 	return Pattern{matchers, beginningAnchor, endAnchor, capturedGroupMatches}
 }
 
+// capturedGroup type contains ceremony around modifying the captured group list. This could probably be refactored
+// to be more straightforward
 type capturedGroup struct {
 	c []string
 }
