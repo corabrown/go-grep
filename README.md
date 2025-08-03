@@ -1,38 +1,24 @@
-[![progress-banner](https://backend.codecrafters.io/progress/grep/da56d1f7-8496-4296-ab27-6b180142df79)](https://app.codecrafters.io/users/codecrafters-bot?r=2qF)
+# Go-grep 
 
-This is a starting point for Go solutions to the
-["Build Your Own grep" Challenge](https://app.codecrafters.io/courses/grep/overview).
+This repo implements grep-like behaviour using Golang. To install, make sure `task` is installed and then run 
+```task build-cli```
 
-[Regular expressions](https://en.wikipedia.org/wiki/Regular_expression)
-(Regexes, for short) are patterns used to match character combinations in
-strings. [`grep`](https://en.wikipedia.org/wiki/Grep) is a CLI tool for
-searching using Regexes.
-
-In this challenge you'll build your own implementation of `grep`. Along the way
-we'll learn about Regex syntax, how parsers/lexers work, and how regular
-expressions are evaluated.
-
-**Note**: If you're viewing this repo on GitHub, head over to
-[codecrafters.io](https://codecrafters.io) to try the challenge.
-
-# Passing the first stage
-
-The entry point for your `grep` implementation is in `app/main.go`. Study and
-uncomment the relevant code, and push your changes to pass the first stage:
-
-```sh
-git commit -am "pass 1st stage" # any msg
-git push origin master
+Usage is 
 ```
+go-grep <pattern> <path-to-file-or-directory>
+```
+with an option flag `--r` to indicate whether or not to recursivley search the path provided. If the path is a file, 
+this flag is ignored. 
 
-Time to move on to the next stage!
-
-# Stage 2 & beyond
-
-Note: This section is for stages 2 and beyond.
-
-1. Ensure you have `go (1.24)` installed locally
-1. Run `./your_program.sh` to run your program, which is implemented in
-   `app/main.go`.
-1. Commit your changes and run `git push origin master` to submit your solution
-   to CodeCrafters. Test output will be streamed to your terminal.
+The pattern can contain the following regex patterns: 
+- pattern anchoring at beginning of string with `^` and end of string with `$`
+- exact string matching
+- matching on digits with `\d`
+- matching on alphanumeric characters with `\w`
+- matching on character groups, e.g. `[abc]` will match to any character in `a`, `b`, `c`
+- matching on negative character groups, e.g. `[^abc]` will match to any character not in `a`, `b`, `c`
+- matching one or more times with `+`, e.g. `a+` will match to `a` one or more times
+- matching zero or one times with `?`
+- matching to a wildcard with `*`
+- matching to an alternating group, e.g. `(cat|dog)` will match to either `cat` or `dog`
+- backreferencing to previous alternating groups, e.g. `(cat|dog) and \1` will match to `cat and cat` or `dog and dog`
